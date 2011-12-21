@@ -1,3 +1,4 @@
+
 #include <SoftwareSerial.h>
 #include <string.h>
 #define GPSrxPin 0
@@ -6,18 +7,19 @@
 
 SoftwareSerial LCD = SoftwareSerial(7,LCDtxPin);
 
-char buff[100];
-int buffCnt=0;
+
 String readLine ="";
 
-boolean bGGA=false;
 
 String time="hhmmss";
-String la="ddmm.mmmm,a";
-String lo="dddmm.mmmm,a";
-String al="xxx.xx";
+String la="ddmm.mmmm";
+String ns="a";
+String lo="dddmm.mmmm";
+String ew="a";
+String al="x.x";
+String sat="xx";
 
-boolean bStringComplete=false;
+
 
 void setup(){
   pinMode(GPSrxPin,INPUT);
@@ -38,68 +40,130 @@ void setup(){
 
 
 void loop(){
-//  if(bStringComplete){
-//    
-//  
-//  }
-//  
-  
-  
+
+  //  if(bStringComplete){
+  //    
+  //  
+  //  }
+  // 
+
   goTo(1,1);
   LCD.print("$T,T:");
   LCD.print(time);
   LCD.print("\r");
+  
+  goTo(1,15);
+  LCD.print("$T,Sat:");
+  LCD.print(sat);
+  LCD.print("\r");  
+  
   goTo(2,1);
   LCD.print("$T,La:");
   LCD.print(la);
+  LCD.print(',');
+  LCD.print(ns);
   LCD.print("\r");      
   goTo(3,1);
   LCD.print("$T,Lo:");
   LCD.print(lo);
+  LCD.print(',');
+  LCD.print(ew);
   LCD.print("\r");      
   goTo(4,1);
   LCD.print("$T,Al:");
   LCD.print(al);
-  LCD.print("\r");  
-  
+  LCD.print("m\r");  
 
+  delay(100);
 }
 
 void serialEvent(){
- while(Serial.available()){
-   char inChar = (char)Serial.read();
+    clearLCD();
+  while (Serial.available()) {
+
+    // get the new byte:
+    char inChar = (char)Serial.read(); 
+    // add it to the inputString:
     readLine += inChar;
-   
-   if(inChar=='\n'){
 
-     char *p;
-     readLine.toCharArray(p,100);
-             Serial.println(readLine);
-
-     char *str;
-     String parts[50]='\0';
-     int partCnt=0;
-     while ((str = strtok_r(p, ",", &p)) != NULL) {
-        parts[partCnt]=str;
-
-        partCnt++;
-     }
-
-     if (parts[0]=="$GPGGA"){
-      time = parts[1];
-      la=parts[2]+"("+parts[3]+")";
-      lo=parts[4]+"("+parts[5]+")";
-      al=parts[9]+"m"; 
-//      bStringComplete=true;
-     }else{
-      *parts = '\0';
-     }
-    
-   }
- } 
+    if (inChar == '\n') {
+      if(splitString(readLine,',',0)=="$GPGGA"){
+        time =splitString(readLine,',',1);
+        la =splitString(readLine,',',2);
+        ns =splitString(readLine,',',3);
+        lo =splitString(readLine,',',4);
+        ew =splitString(readLine,',',5);
+        al =splitString(readLine,',',9);
+      }
+      if(splitString(readLine,',',0)=="$GPGSV"){
+        sat = splitString(readLine,',',3);
+      }
+    } 
+  }
 }
 
 
+String splitString(String s, char parser,int index){
+  String rs='\0';
+  int parserIndex = index;
+  int parserCnt=0;
+  int rFromIndex=0, rToIndex=-1;
+
+  while(index>=parserCnt){
+    rFromIndex = rToIndex+1;
+    rToIndex = s.indexOf(parser,rFromIndex);
+
+    if(index == parserCnt){
+      if(rToIndex == 0 || rToIndex == -1){
+        return '\0';
+      }
+      return s.substring(rFromIndex,rToIndex);
+    }
+    else{
+      parserCnt++;
+    }
+
+  }
+  return rs;
+}
+
+
+//
+//void serialEvent(){
+// while(Serial.available()){
+//   char inChar = (char)Serial.read();
+//    readLine += inChar;
+//   
+//   if(inChar=='\n'){
+//
+//     char *p;
+//     readLine.toCharArray(p,100);
+//             Serial.println(readLine);
+//
+//     char *str;
+//     String parts[50]='\0';
+//     int partCnt=0;
+//     while ((str = strtok_r(p, ",", &p)) != NULL) {
+//        parts[partCnt]=str;
+//
+//        partCnt++;
+//     }
+//
+//     if (parts[0]=="$GPGGA"){
+//      time = parts[1];
+//      la=parts[2]+"("+parts[3]+")";
+//      lo=parts[4]+"("+parts[5]+")";
+//      al=parts[9]+"m"; 
+////      bStringComplete=true;
+//     }else{
+//      *parts = '\0';
+//     }
+//    
+//   }
+// } 
+//}
+//
+//
 
 
 void goTo(int row, int col){
@@ -124,4 +188,8 @@ void backlightOn(){
 void backlightOff(){
   LCD.print("$L,0\r");
 }
+
+
+
+
 
